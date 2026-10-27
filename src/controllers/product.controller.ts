@@ -1,10 +1,48 @@
 import type { Response } from "express";
 import { Product } from "../models/product.model.js";
+import { Brand } from "../models/brand.model.js";
+import { Category } from "../models/category.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import type { AuthenticatedRequest } from "../types/index.js";
+
+const resolveBrandId = async (brandInput: string) => {
+    if (!brandInput) return null;
+
+    if (/^[0-9a-fA-F]{24}$/.test(brandInput)) {
+        const found = await Brand.findById(brandInput);
+        if (found) return found._id;
+    }
+
+    const trimmed = brandInput.trim();
+    const slug = trimmed.toLowerCase().replace(/\s+/g, '-');
+
+    let brandDoc = await Brand.findOne({ slug });
+    if (!brandDoc) {
+        brandDoc = await Brand.create({ name: trimmed, slug });
+    }
+    return brandDoc._id;
+};
+
+const resolveCategoryId = async (categoryInput: string) => {
+    if (!categoryInput) return null;
+
+    if (/^[0-9a-fA-F]{24}$/.test(categoryInput)) {
+        const found = await Category.findById(categoryInput);
+        if (found) return found._id;
+    }
+
+    const trimmed = categoryInput.trim();
+    const slug = trimmed.toLowerCase().replace(/\s+/g, '-');
+
+    let categoryDoc = await Category.findOne({ slug });
+    if (!categoryDoc) {
+        categoryDoc = await Category.create({ name: trimmed, slug });
+    }
+    return categoryDoc._id;
+};
 
 // 1. PRODUCT POST API 
 export const createProduct = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
@@ -26,11 +64,18 @@ export const createProduct = asyncHandler(async (req: AuthenticatedRequest, res:
         throw new ApiError(500, "Failed to upload product image to Cloudinary");
     }
 
+    const brandObjectId = await resolveBrandId(brand);
+    const categoryObjectId = await resolveCategoryId(category);
+
+    if (!brandObjectId || !categoryObjectId) {
+        throw new ApiError(400, "Invalid brand or category provided");
+    }
+
     const product = await Product.create({
         productName: productName.trim(),
         avatar: cloudinaryResponse.secure_url,
-        brand,
-        category,
+        brand: brandObjectId,
+        category: categoryObjectId,
         price: Number(price),
         date: date ? new Date(date) : Date.now(),
     });
@@ -42,7 +87,7 @@ export const createProduct = asyncHandler(async (req: AuthenticatedRequest, res:
 
 // 2. PRODUCT GET API 
 export const getAllProducts = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-    const { page = 1, limit = 10 } = req.query;
+    const { page = 1, limit = 16 } = req.query;
 
     const pageNumber = Math.max(1, Number(page));
     const limitNumber = Math.max(1, Number(limit));
@@ -76,7 +121,7 @@ export const getAllProducts = asyncHandler(async (req: AuthenticatedRequest, res
 
 // 3. PRODUCT SEARCH API 
 export const searchProducts = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-    const { query, page = 1, limit = 10 } = req.query;
+    const { query, page = 1, limit = 16 } = req.query;
 
     if (!query || typeof query !== "string") {
         throw new ApiError(400, "Search query is required");
