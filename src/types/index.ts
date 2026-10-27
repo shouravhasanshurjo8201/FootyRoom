@@ -8,6 +8,7 @@ export interface IUser extends Document {
     googleId: string;
     createdAt: Date;
     updatedAt: Date;
+    refreshToken?: string;
 }
 
 export interface IBrand extends Document {

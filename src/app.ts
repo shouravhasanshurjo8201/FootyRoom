@@ -1,6 +1,7 @@
 import express, { type Application } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import authRouter from './routes/auth.routes.js';
 
 const app: Application = express();
 
@@ -35,5 +36,8 @@ app.get("/api/v1/health", (_req, res) => {
         timestamp: new Date().toISOString(),
     });
 });
+
+// API Auth Route
+app.use("/api/v1/auth", authRouter);
 
 export { app };
