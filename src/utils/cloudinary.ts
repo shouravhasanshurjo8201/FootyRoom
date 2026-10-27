@@ -1,17 +1,7 @@
-import { v2 as cloudinary } from "cloudinary";
+import { v2 as cloudinary, type UploadApiResponse } from "cloudinary";
 import fs from "node:fs/promises";
 
-cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
-});
-
-const uploadOnCloudinary = async (localFilePath: string) => {
-    if (!localFilePath) {
-        return null;
-    }
-
+const uploadOnCloudinary = async (localFilePath: string): Promise<UploadApiResponse> => {
     try {
         const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
         const apiKey = process.env.CLOUDINARY_API_KEY;
@@ -23,29 +13,24 @@ const uploadOnCloudinary = async (localFilePath: string) => {
             );
         }
 
-        const response = await cloudinary.uploader.upload(
-            localFilePath,
-            {
-                resource_type: "auto",
-            }
-        );
-
-        await fs.unlink(localFilePath).catch((error: NodeJS.ErrnoException) => {
-            console.error(
-                "Cloudinary upload successful, but local file cleanup failed:",
-                error.message
-            );
+        cloudinary.config({
+            cloud_name: cloudName,
+            api_key: apiKey,
+            api_secret: apiSecret,
         });
 
-        return response;
+        return await cloudinary.uploader.upload(localFilePath, {
+            resource_type: "image",
+        });
     } catch (error: unknown) {
-        if (error instanceof Error) {
-            console.error("Cloudinary upload failed:", error.message);
-        } else {
-            console.error("Cloudinary upload failed:", error);
+        console.error("Cloudinary upload failed:", error);
+        throw error;
+    } finally {
+        try {
+            await fs.rm(localFilePath, { force: true });
+        } catch (cleanupError) {
+            console.error("Failed to remove temporary upload:", cleanupError);
         }
-
-        return null;
     }
 };
 

@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import { OAuth2Client } from "google-auth-library";
-import jwt, { type SignOptions } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 
 import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/ApiError.js";
@@ -10,12 +10,33 @@ import type { AuthenticatedRequest } from "../types/index.js";
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
+const getTokenLifetimeSeconds = (environmentVariable: string, defaultValue: string): number => {
+    const value = process.env[environmentVariable] ?? defaultValue;
+    const match = /^([1-9]\d*)(s|m|h|d)$/.exec(value);
+    if (!match) {
+        throw new ApiError(500, `${environmentVariable} must use a duration such as 15m or 7d`);
+    }
+
+    const amount = Number(match[1]);
+    const secondsPerUnit: Record<string, number> = {
+        s: 1,
+        m: 60,
+        h: 60 * 60,
+        d: 24 * 60 * 60,
+    };
+    const seconds = amount * secondsPerUnit[match[2]!];
+    if (!Number.isSafeInteger(seconds)) {
+        throw new ApiError(500, `${environmentVariable} is too large`);
+    }
+    return seconds;
+};
+
 const getAccessTokenCookieOptions = () => ({
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax" as const,
     path: "/",
-    maxAge: 4 * 60 * 1000,
+    maxAge: getTokenLifetimeSeconds("ACCESS_TOKEN_EXPIRY", "15m") * 1000,
 });
 
 const getRefreshTokenCookieOptions = () => ({
@@ -23,7 +44,7 @@ const getRefreshTokenCookieOptions = () => ({
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax" as const,
     path: "/",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
+    maxAge: getTokenLifetimeSeconds("REFRESH_TOKEN_EXPIRY", "7d") * 1000,
 });
 
 const clearCookieOptions = () => ({
@@ -65,13 +86,8 @@ const generateAccessAndRefreshTokens = async (userId: string) => {
 
     const { accessSecret, refreshSecret } = getTokenSecrets();
 
-    const accessExpiry = (
-        process.env.ACCESS_TOKEN_EXPIRY || "4m"
-    ) as SignOptions["expiresIn"];
-
-    const refreshExpiry = (
-        process.env.REFRESH_TOKEN_EXPIRY || "7d"
-    ) as SignOptions["expiresIn"];
+    const accessExpiry = getTokenLifetimeSeconds("ACCESS_TOKEN_EXPIRY", "15m");
+    const refreshExpiry = getTokenLifetimeSeconds("REFRESH_TOKEN_EXPIRY", "7d");
 
     const accessToken = jwt.sign(
         {
@@ -106,7 +122,7 @@ const generateAccessAndRefreshTokens = async (userId: string) => {
     };
 };
 
-// 1. POST /api/v1/auth/google
+// POST /api/v1/auth/google
 export const googleAuth = asyncHandler(
     async (req: Request, res: Response) => {
         const { idToken } = req.body as {
@@ -211,7 +227,7 @@ export const googleAuth = asyncHandler(
     }
 );
 
-// 2. POST /api/v1/auth/refresh
+// POST /api/v1/auth/refresh
 export const refreshAccessToken = asyncHandler(
     async (req: Request, res: Response) => {
         const incomingRefreshToken =
@@ -266,8 +282,10 @@ export const refreshAccessToken = asyncHandler(
         }
 
         if (incomingRefreshToken !== user.refreshToken) {
-            user.refreshToken = undefined as any;
-            await user.save({ validateBeforeSave: false });
+            await User.updateOne(
+                { _id: user._id },
+                { $unset: { refreshToken: 1 } }
+            );
 
             res.clearCookie("accessToken", clearCookieOptions());
             res.clearCookie("refreshToken", clearCookieOptions());
@@ -295,7 +313,7 @@ export const refreshAccessToken = asyncHandler(
     }
 );
 
-// 3. POST /api/v1/auth/logout
+// POST /api/v1/auth/logout
 export const logoutUser = asyncHandler(
     async (req: AuthenticatedRequest, res: Response) => {
         if (!req.user?._id) {
@@ -325,7 +343,7 @@ export const logoutUser = asyncHandler(
     }
 );
 
-// 4. GET /api/v1/auth/me
+// GET /api/v1/auth/me
 export const getCurrentUser = asyncHandler(
     async (req: AuthenticatedRequest, res: Response) => {
         if (!req.user) {
