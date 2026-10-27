@@ -2,6 +2,7 @@ import express, { type Application } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import authRouter from './routes/auth.routes.js';
+import productRouter from './routes/product.routes.js';
 
 const app: Application = express();
 
@@ -37,7 +38,10 @@ app.get("/api/v1/health", (_req, res) => {
     });
 });
 
-// API Auth Route
+// Auth API Route
 app.use("/api/v1/auth", authRouter);
+
+// Products API Route
+app.use("/api/v1/products", productRouter);
 
 export { app };
