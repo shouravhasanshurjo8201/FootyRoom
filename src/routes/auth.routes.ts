@@ -6,7 +6,7 @@ const router = Router();
 
 router.route("/google").post(googleAuth);
 router.route("/refresh").post(refreshAccessToken);
-router.route("/logout").post(verifyJWT, logoutUser);
+router.route("/logout").post(logoutUser);
 router.route("/me").get(verifyJWT, getCurrentUser);
 
 export default router;

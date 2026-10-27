@@ -7,6 +7,11 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import type { AuthenticatedRequest } from "../types/index.js";
+import {
+    getAccessTokenCookieOptions,
+    getClearAuthCookieOptions,
+    getRefreshTokenCookieOptions,
+} from "../utils/authCookies.js";
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -30,29 +35,6 @@ const getTokenLifetimeSeconds = (environmentVariable: string, defaultValue: stri
     }
     return seconds;
 };
-
-const getAccessTokenCookieOptions = () => ({
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax" as const,
-    path: "/",
-    maxAge: getTokenLifetimeSeconds("ACCESS_TOKEN_EXPIRY", "15m") * 1000,
-});
-
-const getRefreshTokenCookieOptions = () => ({
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax" as const,
-    path: "/",
-    maxAge: getTokenLifetimeSeconds("REFRESH_TOKEN_EXPIRY", "7d") * 1000,
-});
-
-const clearCookieOptions = () => ({
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax" as const,
-    path: "/",
-});
 
 // Environment validation
 const getTokenSecrets = () => {
@@ -88,11 +70,15 @@ const generateAccessAndRefreshTokens = async (userId: string) => {
 
     const accessExpiry = getTokenLifetimeSeconds("ACCESS_TOKEN_EXPIRY", "15m");
     const refreshExpiry = getTokenLifetimeSeconds("REFRESH_TOKEN_EXPIRY", "7d");
+    const issuedAt = Math.floor(Date.now() / 1000);
+    const accessTokenExpiresAt = new Date((issuedAt + accessExpiry) * 1000);
+    const refreshTokenExpiresAt = new Date((issuedAt + refreshExpiry) * 1000);
 
     const accessToken = jwt.sign(
         {
             _id: user._id.toString(),
             email: user.email,
+            iat: issuedAt,
         },
         accessSecret,
         {
@@ -103,6 +89,7 @@ const generateAccessAndRefreshTokens = async (userId: string) => {
     const refreshToken = jwt.sign(
         {
             _id: user._id.toString(),
+            iat: issuedAt,
         },
         refreshSecret,
         {
@@ -119,6 +106,8 @@ const generateAccessAndRefreshTokens = async (userId: string) => {
     return {
         accessToken,
         refreshToken,
+        accessTokenExpiresAt,
+        refreshTokenExpiresAt,
     };
 };
 
@@ -203,7 +192,7 @@ export const googleAuth = asyncHandler(
             }
         }
 
-        const { accessToken, refreshToken } =
+        const { accessToken, refreshToken, accessTokenExpiresAt, refreshTokenExpiresAt } =
             await generateAccessAndRefreshTokens(user._id.toString());
 
         const safeUser = await User.findById(user._id)
@@ -212,8 +201,8 @@ export const googleAuth = asyncHandler(
 
         return res
             .status(200)
-            .cookie("accessToken", accessToken, getAccessTokenCookieOptions())
-            .cookie("refreshToken", refreshToken, getRefreshTokenCookieOptions())
+            .cookie("accessToken", accessToken, getAccessTokenCookieOptions(accessTokenExpiresAt))
+            .cookie("refreshToken", refreshToken, getRefreshTokenCookieOptions(refreshTokenExpiresAt))
             .json(
                 new ApiResponse(
                     200,
@@ -263,8 +252,8 @@ export const refreshAccessToken = asyncHandler(
 
             decoded = verified;
         } catch {
-            res.clearCookie("accessToken", clearCookieOptions());
-            res.clearCookie("refreshToken", clearCookieOptions());
+            res.cookie("accessToken", "", getClearAuthCookieOptions());
+            res.cookie("refreshToken", "", getClearAuthCookieOptions());
 
             throw new ApiError(
                 401,
@@ -275,8 +264,8 @@ export const refreshAccessToken = asyncHandler(
         const user = await User.findById(decoded._id);
 
         if (!user || !user.refreshToken) {
-            res.clearCookie("accessToken", clearCookieOptions());
-            res.clearCookie("refreshToken", clearCookieOptions());
+            res.cookie("accessToken", "", getClearAuthCookieOptions());
+            res.cookie("refreshToken", "", getClearAuthCookieOptions());
 
             throw new ApiError(401, "Invalid refresh token");
         }
@@ -287,8 +276,8 @@ export const refreshAccessToken = asyncHandler(
                 { $unset: { refreshToken: 1 } }
             );
 
-            res.clearCookie("accessToken", clearCookieOptions());
-            res.clearCookie("refreshToken", clearCookieOptions());
+            res.cookie("accessToken", "", getClearAuthCookieOptions());
+            res.cookie("refreshToken", "", getClearAuthCookieOptions());
 
             throw new ApiError(
                 401,
@@ -296,13 +285,13 @@ export const refreshAccessToken = asyncHandler(
             );
         }
 
-        const { accessToken, refreshToken } =
+        const { accessToken, refreshToken, accessTokenExpiresAt, refreshTokenExpiresAt } =
             await generateAccessAndRefreshTokens(user._id.toString());
 
         return res
             .status(200)
-            .cookie("accessToken", accessToken, getAccessTokenCookieOptions())
-            .cookie("refreshToken", refreshToken, getRefreshTokenCookieOptions())
+            .cookie("accessToken", accessToken, getAccessTokenCookieOptions(accessTokenExpiresAt))
+            .cookie("refreshToken", refreshToken, getRefreshTokenCookieOptions(refreshTokenExpiresAt))
             .json(
                 new ApiResponse(
                     200,
@@ -315,24 +304,22 @@ export const refreshAccessToken = asyncHandler(
 
 // POST /api/v1/auth/logout
 export const logoutUser = asyncHandler(
-    async (req: AuthenticatedRequest, res: Response) => {
-        if (!req.user?._id) {
-            throw new ApiError(401, "Unauthorized request");
-        }
+    async (req: Request, res: Response) => {
+        const refreshToken = req.cookies?.refreshToken ??
+            (typeof req.body?.refreshToken === "string" ? req.body.refreshToken : undefined);
 
-        await User.findByIdAndUpdate(
-            req.user._id,
-            {
-                $unset: {
-                    refreshToken: 1,
-                },
-            }
-        );
+        res.cookie("accessToken", "", getClearAuthCookieOptions());
+        res.cookie("refreshToken", "", getClearAuthCookieOptions());
+
+        if (refreshToken) {
+            await User.updateOne(
+                { refreshToken },
+                { $unset: { refreshToken: 1 } }
+            );
+        }
 
         return res
             .status(200)
-            .clearCookie("accessToken", clearCookieOptions())
-            .clearCookie("refreshToken", clearCookieOptions())
             .json(
                 new ApiResponse(
                     200,

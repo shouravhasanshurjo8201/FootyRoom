@@ -42,6 +42,19 @@ test("reports readiness and returns JSON for malformed requests", async () => {
         const notFoundResponse = await fetch(`${baseUrl}/api/v1/not-found`);
         assert.equal(notFoundResponse.status, 404);
         assert.equal((await notFoundResponse.json()).message, "Route not found");
+
+        const logoutResponse = await fetch(`${baseUrl}/api/v1/auth/logout`, {
+            method: "POST",
+        });
+        assert.equal(logoutResponse.status, 200);
+        const clearedCookies = logoutResponse.headers.getSetCookie();
+        assert.equal(clearedCookies.length, 2);
+        assert.ok(clearedCookies.some((cookie) =>
+            cookie.startsWith("accessToken=") && /max-age=0/i.test(cookie)
+        ), JSON.stringify(clearedCookies));
+        assert.ok(clearedCookies.some((cookie) =>
+            cookie.startsWith("refreshToken=") && /max-age=0/i.test(cookie)
+        ), JSON.stringify(clearedCookies));
     } finally {
         await new Promise<void>((resolve, reject) => {
             server.close((error) => error ? reject(error) : resolve());
