@@ -14,6 +14,9 @@ pids
 # Dependency directories
 node_modules/
 
+# dist directories
+dist
+
 # Environment variables & secret keys
 .env
 
