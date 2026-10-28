@@ -1,29 +1,34 @@
+# Dependencies
+**/node_modules/
+
+# Environment variables and secrets
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.sample
+
 # Logs
-logs
-*.log
+**/logs/
+**/*.log
 npm-debug.log*
 yarn-debug.log*
-yarn-error.log*
-
-# Runtime data
-pids
-*.pid
-*.seed
-*.pid.lock
-
-# Dependency directories
-node_modules/
+pnpm-debug.log*
 
 # Build output
-dist/
+**/dist/
+**/build/
+**/.next/
+**/out/
+**/coverage/
 
-# Environment variables & secret keys
-.env
-
-# Temporary uploaded files
-public/temp/*
-!public/temp/.gitkeep
-
-# IDE configuration
+# IDE
 .vscode/
 .idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary uploads
+**/public/temp/*
+!**/public/temp/.gitkeep
