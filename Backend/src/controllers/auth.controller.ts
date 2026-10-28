@@ -209,6 +209,7 @@ export const googleAuth = asyncHandler(
                     {
                         user: safeUser,
                         accessToken,
+                        expiresIn: Math.ceil((accessTokenExpiresAt.getTime() - Date.now()) / 1000),
                     },
                     "Google login successful"
                 )
@@ -295,7 +296,10 @@ export const refreshAccessToken = asyncHandler(
             .json(
                 new ApiResponse(
                     200,
-                    { accessToken },
+                    {
+                        accessToken,
+                        expiresIn: Math.ceil((accessTokenExpiresAt.getTime() - Date.now()) / 1000),
+                    },
                     "Access token refreshed successfully"
                 )
             );
@@ -336,13 +340,16 @@ export const getCurrentUser = asyncHandler(
         if (!req.user) {
             throw new ApiError(401, "Unauthorized request");
         }
+        if (req.accessTokenExpiresAt === undefined) {
+            throw new ApiError(401, "Invalid access token expiry");
+        }
 
-        return res.status(200).json(
-            new ApiResponse(
-                200,
-                req.user,
-                "Current user fetched successfully"
-            )
-        );
+        return res.status(200).json({
+            ...new ApiResponse(200, req.user, "Current user fetched successfully"),
+            expiresIn: Math.max(
+                0,
+                req.accessTokenExpiresAt - Math.floor(Date.now() / 1000)
+            ),
+        });
     }
 );

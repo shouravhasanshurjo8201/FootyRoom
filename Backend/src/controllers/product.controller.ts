@@ -78,13 +78,19 @@ const resolveExistingCategoryId = async (input: string): Promise<Types.ObjectId>
 
 const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-const getPaginatedProducts = async (filter: ProductFilter, pageValue: unknown, limitValue: unknown) => {
+const getPaginatedProducts = async (
+    filter: ProductFilter,
+    pageValue: unknown,
+    limitValue: unknown,
+    sortDirection?: 1 | -1,
+) => {
     const { page, limit } = parsePagination(pageValue, limitValue);
     const skip = (page - 1) * limit;
     const [products, totalProducts] = await Promise.all([
         Product.find(filter)
             .populate("brand", "name slug")
             .populate("category", "name slug")
+            .sort(sortDirection ? { price: sortDirection, _id: sortDirection } : {})
             .skip(skip)
             .limit(limit)
             .lean(),
@@ -100,6 +106,48 @@ const getPaginatedProducts = async (filter: ProductFilter, pageValue: unknown, l
             limit,
         },
     };
+};
+
+const getProductFilter = async (
+    brandValue: unknown,
+    categoryValue: unknown,
+    minPriceValue: unknown,
+    maxPriceValue: unknown,
+): Promise<ProductFilter> => {
+    const brandInput = parseQueryString(brandValue, "Brand");
+    const categoryInput = parseQueryString(categoryValue, "Category");
+    const minPriceText = parseQueryString(minPriceValue, "Minimum price");
+    const maxPriceText = parseQueryString(maxPriceValue, "Maximum price");
+    const filter: ProductFilter = {};
+
+    if (brandInput) filter.brand = await resolveExistingBrandId(brandInput);
+    if (categoryInput) filter.category = await resolveExistingCategoryId(categoryInput);
+
+    if (minPriceText !== undefined || maxPriceText !== undefined) {
+        const minPrice = minPriceText === undefined
+            ? undefined
+            : parseNonNegativeNumber(minPriceText, "Minimum price");
+        const maxPrice = maxPriceText === undefined
+            ? undefined
+            : parseNonNegativeNumber(maxPriceText, "Maximum price");
+        if (minPrice !== undefined && maxPrice !== undefined && minPrice > maxPrice) {
+            throw new ApiError(400, "Minimum price cannot exceed maximum price");
+        }
+        filter.price = {
+            ...(minPrice !== undefined ? { $gte: minPrice } : {}),
+            ...(maxPrice !== undefined ? { $lte: maxPrice } : {}),
+        };
+    }
+
+    return filter;
+};
+
+const getSortDirection = (sortValue: unknown): 1 | -1 | undefined => {
+    const sort = parseQueryString(sortValue, "Sort");
+    if (sort === undefined) return undefined;
+    if (sort === "asc") return 1;
+    if (sort === "desc") return -1;
+    throw new ApiError(400, "Sort must be either asc or desc");
 };
 
 export const createProduct = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
@@ -148,40 +196,34 @@ export const searchProducts = asyncHandler(async (req: AuthenticatedRequest, res
         throw new ApiError(400, "Search query must be 100 characters or fewer");
     }
 
-    const filter: ProductFilter = {
-        productName: { $regex: escapeRegex(query), $options: "i" },
-    };
-    const result = await getPaginatedProducts(filter, req.query.page, req.query.limit);
+    const filter = await getProductFilter(
+        req.query.brand,
+        req.query.category,
+        req.query.minPrice,
+        req.query.maxPrice,
+    );
+    filter.productName = { $regex: escapeRegex(query), $options: "i" };
+    const result = await getPaginatedProducts(
+        filter,
+        req.query.page,
+        req.query.limit,
+        getSortDirection(req.query.sort),
+    );
     return res.status(200).json(new ApiResponse(200, result, "Search results fetched successfully"));
 });
 
 export const filterProducts = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-    const brandInput = parseQueryString(req.query.brand, "Brand");
-    const categoryInput = parseQueryString(req.query.category, "Category");
-    const minPriceValue = parseQueryString(req.query.minPrice, "Minimum price");
-    const maxPriceValue = parseQueryString(req.query.maxPrice, "Maximum price");
-    const filter: ProductFilter = {};
-
-    if (brandInput) filter.brand = await resolveExistingBrandId(brandInput);
-    if (categoryInput) filter.category = await resolveExistingCategoryId(categoryInput);
-
-    if (minPriceValue !== undefined || maxPriceValue !== undefined) {
-        const minPrice = minPriceValue === undefined
-            ? undefined
-            : parseNonNegativeNumber(minPriceValue, "Minimum price");
-        const maxPrice = maxPriceValue === undefined
-            ? undefined
-            : parseNonNegativeNumber(maxPriceValue, "Maximum price");
-        if (minPrice !== undefined && maxPrice !== undefined && minPrice > maxPrice) {
-            throw new ApiError(400, "Minimum price cannot exceed maximum price");
-        }
-
-        filter.price = {
-            ...(minPrice !== undefined ? { $gte: minPrice } : {}),
-            ...(maxPrice !== undefined ? { $lte: maxPrice } : {}),
-        };
-    }
-
-    const result = await getPaginatedProducts(filter, req.query.page, req.query.limit);
+    const filter = await getProductFilter(
+        req.query.brand,
+        req.query.category,
+        req.query.minPrice,
+        req.query.maxPrice,
+    );
+    const result = await getPaginatedProducts(
+        filter,
+        req.query.page,
+        req.query.limit,
+        getSortDirection(req.query.sort),
+    );
     return res.status(200).json(new ApiResponse(200, result, "Filtered products fetched successfully"));
 });

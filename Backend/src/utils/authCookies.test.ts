@@ -7,7 +7,7 @@ import {
 } from "./authCookies.js";
 
 test("auth cookies expire at the matching JWT expiration time", () => {
-    const expiresAt = new Date("2026-10-27T12:00:00.000Z");
+    const expiresAt = new Date(Date.now() + 60_000);
     const accessOptions = getAccessTokenCookieOptions(expiresAt);
     const refreshOptions = getRefreshTokenCookieOptions(expiresAt);
 

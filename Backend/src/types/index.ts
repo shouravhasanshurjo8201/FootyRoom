@@ -34,4 +34,5 @@ export interface IProduct extends Document {
 
 export interface AuthenticatedRequest extends Request {
     user?: IUser;
+    accessTokenExpiresAt?: number;
 }

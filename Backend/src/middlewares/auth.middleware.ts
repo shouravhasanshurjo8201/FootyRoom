@@ -29,7 +29,11 @@ export const verifyJWT = asyncHandler(async (req: AuthenticatedRequest, res: Res
         throw error;
     }
 
-    if (typeof decodedToken === "string" || typeof decodedToken._id !== "string") {
+    if (
+        typeof decodedToken === "string" ||
+        typeof decodedToken._id !== "string" ||
+        typeof decodedToken.exp !== "number"
+    ) {
         throw new ApiError(401, "Invalid access token payload");
     }
 
@@ -39,5 +43,6 @@ export const verifyJWT = asyncHandler(async (req: AuthenticatedRequest, res: Res
     }
 
     req.user = user;
+    req.accessTokenExpiresAt = decodedToken.exp;
     next();
 });

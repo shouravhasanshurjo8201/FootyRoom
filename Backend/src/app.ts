@@ -10,17 +10,23 @@ import { errorHandler } from "./middlewares/error.middleware.js";
 import { ApiError } from "./utils/ApiError.js";
 
 const app: Application = express();
-const allowedOrigins = new Set(
-    (process.env.CORS_ORIGIN ?? "")
+const allowedOrigins = new Set([
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    ...(process.env.CORS_ORIGIN ?? "")
         .split(",")
         .map((origin) => origin.trim())
         .filter(Boolean)
-);
+]);
 
 app.use(
     cors({
         origin: (origin, callback) => {
-            callback(null, !origin || allowedOrigins.has(origin));
+            if (!origin || allowedOrigins.has(origin)) {
+                callback(null, true);
+            } else {
+                callback(new Error('Not allowed by CORS'));
+            }
         },
         credentials: true,
     })
