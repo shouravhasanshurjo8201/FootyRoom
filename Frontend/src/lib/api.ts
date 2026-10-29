@@ -1,7 +1,7 @@
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
-    ?? (typeof window === 'undefined'
-        ? `${process.env.BACKEND_URL ?? 'http://localhost:8000'}/api/v1`
-        : '/api/v1');
+const BASE_URL =
+    typeof window === 'undefined'
+        ? process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://backend:8000/api/v1'
+        : '/api/v1';
 
 export class ApiError extends Error {
     status: number;

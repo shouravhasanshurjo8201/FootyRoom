@@ -37,6 +37,8 @@ app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 app.use(express.static("public"));
 app.use(cookieParser());
 
+app.set('trust proxy', 1);
+
 // Root route 
 app.get("/", (_req, res) => {
     res.status(200).json({
