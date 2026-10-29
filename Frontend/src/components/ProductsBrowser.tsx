@@ -137,7 +137,7 @@ export default function ProductsBrowser({
                 onSearchNow={handleSearchNow}
             />
 
-            <div className="py-6 grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div className="py-6 grid grid-cols-1 md:grid-cols-4 gap-8 mt-2 -mb-10">
 
                 <div className="order-1 md:order-2 md:col-span-1">
                     <FilterSidebar

@@ -27,7 +27,7 @@ export default function Navbar({ searchQuery, onSearch, onSearchNow }: NavbarPro
     };
 
     return (
-        <header className="w-full py-4 flex flex-col gap-4 sticky -top-26 sm:-top-15 md:-top-14 z-1000 bg-white">
+        <header className="w-full py-4 flex flex-col gap-4 sticky -top-26 sm:-top-15 md:-top-16 z-1000 bg-white">
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                 <h1 className="text-2xl sm:text-3xl font-extrabold text-emerald-500 tracking-wide logo-font">
                     FootyRoom
