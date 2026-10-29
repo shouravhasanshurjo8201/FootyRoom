@@ -116,7 +116,7 @@ export default function FilterSidebar({
     const close = () => setOpenId(null);
 
     return (
-        <aside className="w-full space-y-4">
+        <aside className="w-full space-y-4 md:sticky md:top-18">
             <h2 className="text-2xl sm:text-3xl text-center font-black font-mono tracking-wider text-gray-800 mb-2 sm:mb-4">
                 Filters
             </h2>

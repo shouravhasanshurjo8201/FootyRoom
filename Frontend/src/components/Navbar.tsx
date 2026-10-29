@@ -27,7 +27,7 @@ export default function Navbar({ searchQuery, onSearch, onSearchNow }: NavbarPro
     };
 
     return (
-        <header className="w-full py-4 flex flex-col gap-4">
+        <header className="w-full py-4 flex flex-col gap-4 sticky -top-26 sm:-top-15 md:-top-14 z-1000 bg-white">
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                 <h1 className="text-2xl sm:text-3xl font-extrabold text-emerald-500 tracking-wide logo-font">
                     FootyRoom
@@ -71,33 +71,31 @@ export default function Navbar({ searchQuery, onSearch, onSearchNow }: NavbarPro
                 </div>
             </div>
 
-            <div className="sticky top-4 z-1000 w-full bg-white/95 backdrop-blur-md py-2">
-                <div className="relative w-full">
-                    <input
-                        type="text"
-                        value={searchQuery}
-                        onChange={(e) => onSearch(e.target.value)}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter') onSearchNow?.(e.currentTarget.value);
-                        }}
-                        placeholder="Search products..."
-                        className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-700 bg-white focus:outline-none focus:border-emerald-500 shadow-sm"
+            <div className="relative w-full">
+                <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => onSearch(e.target.value)}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter') onSearchNow?.(e.currentTarget.value);
+                    }}
+                    placeholder="Search products..."
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-700 bg-white focus:outline-none focus:border-emerald-500 shadow-sm -mb-3"
+                />
+                <svg
+                    className="w-4 h-4 text-gray-400 absolute right-3.5 top-3.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                >
+                    <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                     />
-                    <svg
-                        className="w-4 h-4 text-gray-400 absolute right-3.5 top-3.5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                        aria-hidden="true"
-                    >
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                        />
-                    </svg>
-                </div>
+                </svg>
             </div>
 
             {showLogoutModal && (
