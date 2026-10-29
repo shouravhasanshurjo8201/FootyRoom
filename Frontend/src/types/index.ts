@@ -75,7 +75,6 @@ export interface PaginationProps {
 }
 
 
-
 export interface NavbarProps {
     searchQuery: string;
     onSearch: (query: string) => void;
@@ -85,16 +84,10 @@ export interface NavbarProps {
 export interface FilterSidebarProps {
     brands: Brand[];
     categories: Category[];
-    selectedBrand: string;
-    setSelectedBrand: (val: string) => void;
-    selectedCategory: string;
-    setSelectedCategory: (val: string) => void;
-    selectedPrice: string;
-    setSelectedPrice: (val: string) => void;
-    sort: string;
-    setSort: (val: string) => void;
+    filters: Filters;
+    onFilterChange: (key: keyof Filters, value: string) => void;
+    onReset: () => void;
 }
-
 
 export interface Option {
     value: string;

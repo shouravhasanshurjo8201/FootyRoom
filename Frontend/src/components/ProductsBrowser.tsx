@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useTransition } from 'react';
+import { useCallback, useRef, useState, useTransition } from 'react';
 import Navbar from '@/components/Navbar';
 import ProductCard from '@/components/ProductCard';
 import FilterSidebar from '@/components/FilterSidebar';
@@ -11,11 +11,10 @@ import {
     searchProducts,
     filterProducts,
 } from '@/actions/productActions';
+import { readFilters, saveFilters } from '@/lib/filterStorage';
 import type { Product, Filters, ProductsBrowserProps, FetchParams } from '@/types';
 
 const DEBOUNCE_MS = 800;
-
-
 
 const EMPTY_FILTERS: Filters = { brand: '', category: '', price: '', sort: '' };
 
@@ -36,6 +35,7 @@ export default function ProductsBrowser({
 
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const requestIdRef = useRef(0);
+    const restoredRef = useRef(false);
 
     const load = (params: FetchParams) => {
         const requestId = ++requestIdRef.current;
@@ -44,10 +44,10 @@ export default function ProductsBrowser({
             try {
                 const { query: q, brand, category, price, sort, page: p } = params;
                 const hasFilter = Boolean(brand || category || price || sort);
+                const [minPrice, maxPrice] = price ? price.split('-') : ['', ''];
 
                 let res;
                 if (q) {
-                    const [minPrice, maxPrice] = price ? price.split('-') : ['', ''];
                     res = await searchProducts(q, p, limit, {
                         brand,
                         category,
@@ -56,7 +56,6 @@ export default function ProductsBrowser({
                         sort,
                     });
                 } else if (hasFilter) {
-                    const [minPrice, maxPrice] = price ? price.split('-') : ['', ''];
                     res = await filterProducts({
                         brand,
                         category,
@@ -92,6 +91,17 @@ export default function ProductsBrowser({
         }
     };
 
+    const restoreRef = useCallback((node: HTMLDivElement | null) => {
+        if (!node || restoredRef.current) return;
+        restoredRef.current = true;
+
+        const saved = readFilters();
+        if (!saved) return;
+
+        setFilters(saved);
+        load({ query: '', ...saved, page: 1 });
+    }, []);
+
     const handleSearch = (value: string) => {
         setQuery(value);
         clearTimer();
@@ -116,12 +126,20 @@ export default function ProductsBrowser({
         load({ query: trimmed, ...filters, page: 1 });
     };
 
-    const handleFilterChange = (key: keyof Filters, value: string) => {
+    const applyFilters = (next: Filters) => {
         clearTimer();
-        const next = { ...filters, [key]: value };
         setFilters(next);
         setQuery('');
+        saveFilters(next);
         load({ query: '', ...next, page: 1 });
+    };
+
+    const handleFilterChange = (key: keyof Filters, value: string) => {
+        applyFilters({ ...filters, [key]: value });
+    };
+
+    const handleReset = () => {
+        applyFilters(EMPTY_FILTERS);
     };
 
     const handlePageChange = (nextPage: number) => {
@@ -130,7 +148,7 @@ export default function ProductsBrowser({
     };
 
     return (
-        <>
+        <div ref={restoreRef}>
             <Navbar
                 searchQuery={query}
                 onSearch={handleSearch}
@@ -138,19 +156,13 @@ export default function ProductsBrowser({
             />
 
             <div className="py-6 grid grid-cols-1 md:grid-cols-4 gap-8 mt-2 -mb-10">
-
                 <div className="order-1 md:order-2 md:col-span-1">
                     <FilterSidebar
                         brands={brands}
                         categories={categories}
-                        selectedBrand={filters.brand}
-                        setSelectedBrand={(v) => handleFilterChange('brand', v)}
-                        selectedCategory={filters.category}
-                        setSelectedCategory={(v) => handleFilterChange('category', v)}
-                        selectedPrice={filters.price}
-                        setSelectedPrice={(v) => handleFilterChange('price', v)}
-                        sort={filters.sort}
-                        setSort={(v) => handleFilterChange('sort', v)}
+                        filters={filters}
+                        onFilterChange={handleFilterChange}
+                        onReset={handleReset}
                     />
                 </div>
 
@@ -181,8 +193,7 @@ export default function ProductsBrowser({
                         </>
                     )}
                 </div>
-
             </div>
-        </>
+        </div>
     );
 }
