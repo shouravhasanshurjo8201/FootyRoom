@@ -4,7 +4,7 @@ import { getBrands, getCategories } from '@/actions/categoryBrandActions';
 import type { Product, Brand, Category } from '@/types';
 import ProductsBrowser from '@/components/ProductsBrowser';
 
-const LIMIT = 11;
+const LIMIT = 9;
 
 export default function HomePage() {
   return (

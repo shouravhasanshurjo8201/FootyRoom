@@ -38,7 +38,7 @@ export default function Navbar({ searchQuery, onSearch, onSearchNow }: NavbarPro
                         <div className="w-8 h-8 rounded-full bg-gray-200 animate-pulse" />
                     ) : user ? (
                         <div className="flex items-center gap-3 px-3 py-1.5">
-                            <span className="text-xs sm:text-sm font-mono font-semibold text-gray-700 max-w-[120px] sm:max-w-[180px] truncate">
+                            <span className="text-xs sm:text-sm font-mono font-semibold text-gray-700 max-w-30 sm:max-w-45 truncate">
                                 {user.name}
                             </span>
                             <button
@@ -71,7 +71,7 @@ export default function Navbar({ searchQuery, onSearch, onSearchNow }: NavbarPro
                 </div>
             </div>
 
-            <div className="sticky top-4 z-[1000] w-full bg-white/95 backdrop-blur-md py-2">
+            <div className="sticky top-4 z-1000 w-full bg-white/95 backdrop-blur-md py-2">
                 <div className="relative w-full">
                     <input
                         type="text"
@@ -101,7 +101,7 @@ export default function Navbar({ searchQuery, onSearch, onSearchNow }: NavbarPro
             </div>
 
             {showLogoutModal && (
-                <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                <div className="fixed inset-0 z-1100 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
                     <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 text-center animate-in fade-in zoom-in duration-200">
                         <h3 className="text-lg font-bold text-gray-800 mb-2">Logout Confirmation</h3>
                         <p className="text-sm text-gray-600 mb-6">

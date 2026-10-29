@@ -83,6 +83,7 @@ export default function FilterSidebar({
     sort,
     setSort,
 }: FilterSidebarProps) {
+
     const [openId, setOpenId] = useState<string | null>(null);
 
     const safeBrands = Array.isArray(brands) ? brands : [];

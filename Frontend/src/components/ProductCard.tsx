@@ -2,12 +2,12 @@ import { Product } from '@/types';
 
 export default function ProductCard({ product }: { product: Product }) {
     return (
-        <div className="border border-emerald-400 rounded p-3 flex flex-col justify-between bg-white shadow-sm hover:shadow-md transition">
-            <div className="w-full h-68 rounded flex items-center justify-center overflow-hidden mb-3">
+        <div className="border border-emerald-400 rounded p-2 flex flex-col justify-between bg-white shadow-sm hover:shadow-md transition">
+            <div className="w-full h-72 rounded flex items-center justify-center overflow-hidden mb-2">
                 <img
                     src={product.avatar || 'https://via.placeholder.com/200'}
                     alt={product.productName}
-                    className=" h-full w-full"
+                    className=" h-full w-full object-center"
                 />
             </div>
 

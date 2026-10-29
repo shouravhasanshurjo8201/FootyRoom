@@ -85,6 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         started.current = true;
 
         const idToken = session?.idToken;
+        // console.log("idToken", idToken);
 
         (async () => {
             try {
