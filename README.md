@@ -1,4 +1,4 @@
-# ⚽ FootyRoom - E-Commerce Web Application
+# FootyRoom - E-Commerce Web Application
 
 FootyRoom is a modern, containerized full-stack e-commerce web application built for football enthusiasts, featuring a high-performance Next.js frontend, a robust Express/TypeScript backend, and database orchestration, all seamlessly deployed using Docker Compose with Nginx and SSL support.
 
@@ -34,5 +34,4 @@ footyroom/
 ├── frontend/             # Next.js 16 Frontend application
 ├── Backend/              # Express & TypeScript Backend API
 ├── nginx/                # Nginx reverse proxy configuration & SSL
-├── docker-compose.yml    # Multi-container orchestration
-└── init-letsencrypt.sh   # SSL certificate generation script
+└── docker-compose.yml    # Multi-container orchestration
