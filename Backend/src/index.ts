@@ -11,8 +11,10 @@ const startServer = async () => {
   try {
     const { default: connectDB } = await import("./db/index.js");
     const { app } = await import("./app.js");
+    const { closeRedis, connectRedis } = await import("./utils/redisCache.js");
 
     await connectDB();
+    void connectRedis();
 
     const port = Number(process.env.PORT) || 8000;
 
@@ -31,11 +33,11 @@ const startServer = async () => {
         }
 
         try {
-          await mongoose.disconnect();
-          console.log(`[${instanceId}] MongoDB disconnected`);
+          await Promise.all([closeRedis(), mongoose.disconnect()]);
+          console.log(`[${instanceId}] Database and cache connections closed`);
         } catch (disconnectError) {
           console.error(
-            `[${instanceId}] MongoDB disconnect failed:`,
+            `[${instanceId}] Connection shutdown failed:`,
             disconnectError,
           );
         }

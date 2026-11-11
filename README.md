@@ -14,6 +14,7 @@ the public reverse proxy and backend load balancer.
 | Database | MongoDB with Mongoose |
 | Authentication | NextAuth Google OAuth, backend JWT access/refresh tokens |
 | Image storage | Cloudinary |
+| Cache | Redis (shared by backend instances) |
 | Runtime and routing | Docker Compose, Nginx |
 
 ## Architecture
@@ -28,6 +29,7 @@ Nginx :3000
   `-- other paths ----> Next.js frontend
 
 All backend instances ------> shared MongoDB
+All backend instances ------> shared Redis cache
 Product image uploads ------> Cloudinary
 ```
 
@@ -42,6 +44,8 @@ application and Docker also expose/check backend health at `/health` and
 `/api/v1/health`. Nginx Open Source does not provide active upstream health
 probes here. See [docs/LOAD_BALANCING.md](docs/LOAD_BALANCING.md) for balancing,
 failover, and instance management details.
+Product-list caching, invalidation, Redis controls, and k6 test commands are
+documented in [docs/REDIS_CACHING.md](docs/REDIS_CACHING.md).
 
 ## Requirements
 
@@ -57,6 +61,9 @@ real credentials. Set the following values:
 
 ```dotenv
 MONGODB_URI=mongodb://mongo:27017
+REDIS_ENABLED=true
+REDIS_URL=redis://redis:6379
+REDIS_PRODUCTS_TTL=300
 ACCESS_TOKEN_SECRET=use-a-long-random-secret
 REFRESH_TOKEN_SECRET=use-a-different-long-random-secret
 NEXTAUTH_SECRET=use-a-long-random-secret
