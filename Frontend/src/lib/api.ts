@@ -5,7 +5,10 @@ const BASE_URL =
       (process.env.NODE_ENV === "production"
         ? "https://footy-room-backend.vercel.app/api/v1"
         : "http://localhost:8000/api/v1")
-    : "/api/v1";
+    : process.env.NEXT_PUBLIC_API_BASE_URL ||
+      (process.env.NODE_ENV === "production"
+        ? "https://footy-room-backend.vercel.app/api/v1"
+        : "http://localhost:8000/api/v1");
 
 export class ApiError extends Error {
   status: number;
