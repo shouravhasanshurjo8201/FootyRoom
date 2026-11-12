@@ -1,67 +1,45 @@
 import dotenv from "dotenv";
 import mongoose from "mongoose";
+import connectDB from "./db/index.js";
+import { app } from "./app.js";
+import { closeRedis, connectRedis } from "./utils/redisCache.js";
 
-dotenv.config({
-  path: "./.env",
-});
+dotenv.config({ path: "./.env" });
 
 const instanceId = process.env.INSTANCE_ID ?? `backend-${process.pid}`;
 
-const startServer = async () => {
-  try {
-    const { default: connectDB } = await import("./db/index.js");
-    const { app } = await import("./app.js");
-    const { closeRedis, connectRedis } = await import("./utils/redisCache.js");
+// Vercel পরিবেশে সরাসরি কানেকশন শুরু করবে
+if (process.env.VERCEL) {
+  connectDB().catch((err) => console.error("MongoDB connection failed:", err));
+  void connectRedis();
+} else {
+  // লোকাল বা Docker পরিবেশে আগের মতো সার্ভার চলবে
+  const startServer = async () => {
+    try {
+      await connectDB();
+      void connectRedis();
+      const port = Number(process.env.PORT) || 8000;
 
-    await connectDB();
-    void connectRedis();
-
-    const port = Number(process.env.PORT) || 8000;
-
-    const server = app.listen(port, "0.0.0.0", () => {
-      console.log(`⚙️ [${instanceId}] Server is running at port: ${port}`);
-    });
-
-    const shutdown = async () => {
-      console.log(`\n[${instanceId}] Gracefully shutting down...`);
-
-      server.close(async (error) => {
-        if (error) {
-          console.error(`[${instanceId}] HTTP server shutdown error:`, error);
-          process.exitCode = 1;
-          return;
-        }
-
-        try {
-          await Promise.all([closeRedis(), mongoose.disconnect()]);
-          console.log(`[${instanceId}] Database and cache connections closed`);
-        } catch (disconnectError) {
-          console.error(
-            `[${instanceId}] Connection shutdown failed:`,
-            disconnectError,
-          );
-        }
-
-        process.exit(0);
+      const server = app.listen(port, "0.0.0.0", () => {
+        console.log(`⚙️ [${instanceId}] Server is running at port: ${port}`);
       });
 
-      setTimeout(() => {
-        console.error(`[${instanceId}] Forced shutdown after timeout`);
-        process.exit(1);
-      }, 10000);
-    };
+      const shutdown = async () => {
+        server.close(async () => {
+          await Promise.all([closeRedis(), mongoose.disconnect()]);
+          process.exit(0);
+        });
+      };
 
-    process.on("SIGINT", () => {
-      void shutdown();
-    });
+      process.on("SIGINT", () => void shutdown());
+      process.on("SIGTERM", () => void shutdown());
+    } catch (error) {
+      console.error(`[${instanceId}] Server startup failed:`, error);
+      process.exit(1);
+    }
+  };
 
-    process.on("SIGTERM", () => {
-      void shutdown();
-    });
-  } catch (error: unknown) {
-    console.error(`[${instanceId}] Server startup failed:`, error);
-    process.exit(1);
-  }
-};
+  void startServer();
+}
 
-void startServer();
+export default app;
