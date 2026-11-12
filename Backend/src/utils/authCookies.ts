@@ -6,7 +6,6 @@ const baseCookieOptions = (): CookieOptions => {
   return {
     httpOnly: true,
     secure: isProduction,
-    sameSite: "lax",
     path: "/",
   };
 };
